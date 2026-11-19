@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "bun scripts/seed.ts",
+    "check": "bun scripts/check.ts"
   },
   "dependencies": {
+    "mongoose": "^9.12.2",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"

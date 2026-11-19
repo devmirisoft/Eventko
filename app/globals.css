@@ -1,26 +1,168 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Warm ivory + deep emerald. Emerald clears WCAG AA both as text on ivory (5.5:1) and under white text (6.3:1).
+   muted is #65736B nudged darker so small text clears AA (4.7:1 vs 4.4:1); the spec value is kept as faint for icons
+   and placeholders. Gold is decorative only (too light for text). *-ink are the AA-safe text shades of status colours. */
+@theme {
+  --color-surface: #f1f0ea;
+  --color-sage: #e1e5da;
+  --color-ink: #25372f;
+  --color-muted: #616e66;
+  --color-faint: #65736b;
+  --color-line: #dddbd1;
+  --color-accent: #256b58;
+  --color-gold: #c49357;
+  --color-ok: #3e9b6e;
+  --color-ok-ink: #1f6646;
+  --color-warn: #d98c3a;
+  --color-warn-ink: #7a4e0c;
+  --color-bad: #cf6a62;
+  --color-bad-ink: #a3343d;
+  --shadow-raised: 8px 8px 18px #d2d0c6;
+  --shadow-soft: 4px 4px 9px #d2d0c6;
+  --shadow-inset: inset 5px 5px 10px #d2d0c6;
+  --shadow-pressed: inset 3px 3px 6px #d2d0c6;
+  --shadow-modal: 0 24px 60px -12px rgb(37 55 47 / 0.3);
+}
+
+@layer base {
+  html { color-scheme: light; }
+  body { background: var(--color-surface); }
+  h1 { @apply text-xl font-semibold tracking-tight text-ink sm:text-2xl; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  summary { cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  /* surfaces */
+  .card { @apply rounded-[20px] bg-surface p-5 shadow-raised; }
+  .well { @apply rounded-2xl bg-surface shadow-inset; }
+  .chip { @apply grid size-11 shrink-0 place-items-center rounded-full bg-surface shadow-inset; }
+  .avatar { @apply grid size-10 shrink-0 place-items-center rounded-full bg-surface text-sm font-semibold text-accent shadow-soft; }
+
+  /* forms */
+  .field { @apply flex flex-col gap-1.5 text-sm font-medium text-ink; }
+  .hint { @apply text-xs font-normal text-muted; }
+  .input { @apply h-11 w-full min-w-0 rounded-xl bg-surface px-3.5 text-sm font-normal text-ink shadow-inset outline-2 outline-offset-0 outline-transparent transition-[outline-color] duration-150 placeholder:text-faint focus:outline-accent disabled:text-muted; }
+  .input:user-invalid { @apply outline-bad; }
+  textarea.input { @apply h-auto py-3; }
+  select.input {
+    @apply cursor-pointer appearance-none pr-10;
+    background: no-repeat right 0.875rem center / 1rem
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365736b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /* Themed dropdown list where customizable <select> is supported (Chromium 135+). Other browsers keep the native list. */
+  @supports (appearance: base-select) {
+    select.input, select.input::picker(select) { appearance: base-select; }
+    select.input { @apply flex items-center justify-between gap-2 pr-3.5; background-image: none; }
+    select.input::picker-icon {
+      content: ""; width: 1rem; height: 1rem; transition: rotate 0.2s;
+      background: center / contain no-repeat
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365736b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
+    select.input:open::picker-icon { rotate: 180deg; }
+    select.input::picker(select) {
+      @apply my-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-modal;
+      opacity: 0; translate: 0 -4px;
+      transition: opacity 0.15s, translate 0.15s, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
+    }
+    select.input:open::picker(select) { opacity: 1; translate: 0; }
+    @starting-style { select.input:open::picker(select) { opacity: 0; translate: 0 -4px; } }
+    select.input option { @apply flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm text-ink transition-colors duration-100; }
+    select.input option:is(:hover, :focus-visible) { @apply bg-sage outline-none; }
+    select.input option:checked { @apply font-semibold text-accent; }
+    select.input option::checkmark { order: 1; margin-left: auto; color: var(--color-accent); }
+  }
+
+  /* buttons. modifiers: "btn btn-ghost", "btn btn-sm" ... */
+  .btn { @apply inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold whitespace-nowrap text-white shadow-soft transition duration-150 select-none hover:bg-[#1d5646] active:translate-y-px active:shadow-[inset_3px_3px_6px_rgb(0_0_0/0.25)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none aria-busy:cursor-wait; }
+  .btn-ghost, .btn-red, .btn-green { @apply bg-surface hover:bg-surface active:shadow-pressed; }
+  .btn-ghost { @apply text-ink hover:text-accent; }
+  .btn-red { @apply text-bad-ink; }
+  .btn-green { @apply text-ok-ink; }
+  .btn-sm { @apply h-9 gap-1.5 rounded-[10px] px-3.5 text-xs; }
+  .icon-btn { @apply inline-grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl bg-surface text-muted shadow-soft transition duration-150 hover:text-accent active:shadow-pressed disabled:cursor-not-allowed disabled:opacity-50; }
+  .link { @apply cursor-pointer font-medium text-accent underline-offset-2 hover:underline; }
+
+  /* messages */
+  .err { @apply flex items-start gap-2 rounded-xl bg-bad/12 px-4 py-3 text-sm font-medium text-bad-ink; }
+
+  /* tables (desktop only; phones get card lists) */
+  .tbl { @apply w-full text-left text-sm whitespace-nowrap; }
+  .tbl th { @apply px-4 pt-3 pb-3 text-xs font-semibold tracking-wide text-muted uppercase; }
+  .tbl td { @apply border-t border-line px-4 py-3.5; }
+  .tbl tbody tr { @apply transition-colors duration-150 hover:bg-white/40; }
+  .num { @apply text-right tabular-nums; }
+
+  /* navigation */
+  .nav-item { @apply flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-muted transition duration-200 hover:text-ink hover:shadow-soft; }
+  .nav-item[aria-current="page"] { @apply bg-sage text-accent shadow-pressed hover:shadow-pressed; }
+
+  /* popover modal: fades + scales in */
+  .modal {
+    @apply m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-[20px] bg-surface p-5 text-ink shadow-modal sm:p-6;
+    transition: opacity 0.2s, scale 0.2s, overlay 0.2s allow-discrete, display 0.2s allow-discrete;
+  }
+  .modal:not(:popover-open) { opacity: 0; scale: 0.96; }
+  @starting-style { .modal:popover-open { opacity: 0; scale: 0.96; } }
+  .modal::backdrop { background: rgb(37 55 47 / 0.35); }
+}
+
+/* Role tree from nested <ul>/<li>; connector lines are borders on pseudo-elements.
+   Below lg: indented tree. lg+: top-down org chart. A checked .toggle checkbox collapses that role's branch.
+   Inside a layer: Next's CSS step dropped these rules when they were un-layered. */
+@layer components {
+  .org { --line: 1.5px solid #c9ccc0; --gap: 2rem; }
+  /* emerald cap on each node, fading with depth, so parents read stronger than their children */
+  .org .role { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--color-accent) var(--cap, 100%), transparent), var(--shadow-raised); }
+  .org ul ul .role { --cap: 60%; }
+  .org ul ul ul .role { --cap: 30%; }
+  .org li:has(> .role .toggle :checked) > ul { display: none; }
+  .org ul ul { transition: opacity 0.22s ease, translate 0.22s ease; }
+  @starting-style { .org ul ul { opacity: 0; translate: 0 -6px; } }
+  .toggle svg { transition: rotate 0.2s; }
+  .toggle:has(:checked) svg { rotate: -90deg; }
+  .toggle:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+  @media (width < 64rem) {
+    /* elbow = li padding-top + node padding + half the prefix chip, so lines hit the chip's centre */
+    .org { --elbow: 3rem; }
+    .org ul ul { padding-left: 1.5rem; }
+    .org li { position: relative; padding-top: 0.75rem; }
+    .org ul ul > li::before { content: ""; position: absolute; left: -0.875rem; top: 0; bottom: 0; border-left: var(--line); }
+    .org ul ul > li::after { content: ""; position: absolute; left: -0.875rem; top: var(--elbow); width: 0.875rem; border-top: var(--line); }
+    .org ul ul > li:last-child::before { bottom: auto; height: var(--elbow); border-bottom-left-radius: 10px; }
+  }
+
+  @media (width >= 64rem) {
+    .org ul { display: flex; justify-content: center; position: relative; padding-top: var(--gap); }
+    .org li { display: flex; flex-direction: column; align-items: center; position: relative; padding: var(--gap) 0.75rem 0; }
+    .org li::before, .org li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: var(--gap); border-top: var(--line); }
+    .org li::after { right: auto; left: 50%; border-left: var(--line); }
+    .org li:first-child::before, .org li:last-child::after { border: 0; }
+    .org li:last-child::before { border-right: var(--line); border-top-right-radius: 12px; }
+    .org li:first-child::after { border-top-left-radius: 12px; }
+    .org li:only-child { padding-top: 0; }
+    .org li:only-child::before, .org li:only-child::after { display: none; }
+    .org ul ul::before { content: ""; position: absolute; top: 0; left: 50%; height: var(--gap); border-left: var(--line); }
+    /* top level: no parent, so no connectors */
+    .org > ul { padding-top: 0; }
+    .org > ul > li { padding-top: 0; }
+    .org > ul > li::before, .org > ul > li::after { display: none; }
+    .org .role { width: 15rem; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
