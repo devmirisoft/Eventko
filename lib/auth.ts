@@ -6,8 +6,9 @@ import { db, Member } from "./db";
 
 // ponytail: cookie holds the raw member _id (spec'd demo auth, forgeable). Sign it (e.g. iron-session) before real use.
 export const me = cache(async () => {
-  await db();
+  // cookies() first: it marks the route dynamic, so `next build` stops before ever connecting to the DB
   const id = (await cookies()).get("mid")?.value;
+  await db();
   return isValidObjectId(id) ? Member.findOne({ _id: id, status: "approved" }).lean() : null;
 });
 
