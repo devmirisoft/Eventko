@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Member, searchRe } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { Badge, Empty, Icon, PageHeader, inr, initials, plural, total } from "../ui";
+import { Badge, Empty, Icon, PageHeader, dayMonth, inr, initials, plural, total } from "../ui";
 
 export default async function Members({ searchParams }: PageProps<"/members">) {
   await auth(true);
@@ -54,7 +54,7 @@ export default async function Members({ searchParams }: PageProps<"/members">) {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Name</th><th>Designation</th><th>Code</th><th>Phone</th><th>Status</th>
+                  <th>Name</th><th>Designation</th><th>Code</th><th>Phone</th><th>Birthday</th><th>Anniversary</th><th>Status</th>
                   <th className="num">Paid</th><th className="num">Due</th><th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -67,6 +67,8 @@ export default async function Members({ searchParams }: PageProps<"/members">) {
                       <td className="text-muted">{m.roleId?.name}</td>
                       <td className="font-mono text-xs">{m.memberCode}</td>
                       <td className="text-muted tabular-nums">{m.phone}</td>
+                      <td className="text-muted">{dayMonth(m.dateOfBirth)}</td>
+                      <td className="text-muted">{dayMonth(m.anniversaryDate)}</td>
                       <td><Badge s={m.status} /></td>
                       <td className="num">{inr(total(m.payments, "paid"))}</td>
                       <td className={`num ${due ? "font-medium text-warn-ink" : "text-muted"}`}>{inr(due)}</td>
@@ -94,6 +96,8 @@ export default async function Members({ searchParams }: PageProps<"/members">) {
                   <dl className="well mt-4 grid grid-cols-2 gap-2 rounded-xl px-4 py-3 text-sm">
                     <div><dt className="text-xs text-muted">Paid</dt><dd className="font-semibold tabular-nums">{inr(total(m.payments, "paid"))}</dd></div>
                     <div><dt className="text-xs text-muted">Due</dt><dd className={`font-semibold tabular-nums ${due ? "text-warn-ink" : ""}`}>{inr(due)}</dd></div>
+                    <div><dt className="text-xs text-muted">Birthday</dt><dd className="font-medium">{dayMonth(m.dateOfBirth)}</dd></div>
+                    <div><dt className="text-xs text-muted">Anniversary</dt><dd className="font-medium">{dayMonth(m.anniversaryDate)}</dd></div>
                   </dl>
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <a href={`tel:${m.phone}`} className="flex min-w-0 items-center gap-1.5 text-sm text-muted hover:text-ink">

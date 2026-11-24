@@ -9,6 +9,7 @@ import { auth, me } from "@/lib/auth";
 const s = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 const errMsg = (e: unknown) => {
+  if (typeof e === "string") return e;
   const x = e as { code?: number; keyValue?: object; message?: string };
   if (x.code === 11000) return `${"phone" in (x.keyValue ?? {}) ? "Phone" : "Member code"} already exists`;
   return x.message ?? "Something went wrong";
@@ -20,7 +21,15 @@ function ok(path: string): never {
 }
 
 function fail(path: string, e: unknown): never {
-  redirect(`${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(typeof e === "string" ? e : errMsg(e))}`);
+  redirect(`${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(errMsg(e))}`);
+}
+
+// Optional <input type="date"> values. Throws a message (errMsg passes strings through).
+function memberDates(fd: FormData) {
+  const [dateOfBirth, anniversaryDate] = ["dateOfBirth", "anniversaryDate"].map((k) => (s(fd, k) ? new Date(s(fd, k)) : null));
+  if ([dateOfBirth, anniversaryDate].some((d) => d && (isNaN(+d) || +d > Date.now()))) throw "Dates must be valid and can't be in the future";
+  if (dateOfBirth && anniversaryDate && anniversaryDate < dateOfBirth) throw "Anniversary can't be before date of birth";
+  return { dateOfBirth, anniversaryDate };
 }
 
 const payment = (fd: FormData) => ({
@@ -55,6 +64,7 @@ export async function createMember(fd: FormData) {
       phone: s(fd, "phone"),
       memberCode: s(fd, "memberCode"),
       roleId: s(fd, "roleId"),
+      ...memberDates(fd),
       payments: [payment(fd)],
     });
   } catch (e) {
@@ -65,8 +75,8 @@ export async function createMember(fd: FormData) {
 
 export async function updateMember(id: string, fd: FormData) {
   await auth(true);
-  const data = { name: s(fd, "name"), phone: s(fd, "phone"), memberCode: s(fd, "memberCode"), roleId: s(fd, "roleId"), status: s(fd, "status") };
   try {
+    const data = { name: s(fd, "name"), phone: s(fd, "phone"), memberCode: s(fd, "memberCode"), roleId: s(fd, "roleId"), status: s(fd, "status"), ...memberDates(fd) };
     await Member.updateOne({ _id: id }, data, { runValidators: true });
   } catch (e) {
     fail(`/members/${id}`, e);

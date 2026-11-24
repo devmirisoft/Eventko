@@ -4,7 +4,7 @@ import { Member, Role } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { updateMember } from "../../actions";
 import { Btn } from "../../client";
-import { Back, Icon, PageHeader } from "../../ui";
+import { Back, Icon, MemberDateFields, PageHeader } from "../../ui";
 
 export default async function EditMember({ params, searchParams }: PageProps<"/members/[id]">) {
   await auth(true);
@@ -30,6 +30,7 @@ export default async function EditMember({ params, searchParams }: PageProps<"/m
           </select>
         </label>
         <label className="field">Member code<input name="memberCode" defaultValue={m.memberCode} required className="input font-mono uppercase" /></label>
+        <MemberDateFields m={m} />
         <label className="field">
           Status
           <select name="status" defaultValue={m.status} className="input">

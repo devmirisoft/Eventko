@@ -27,19 +27,29 @@ const admin = await Member.create({
   payments: [{ amount: 5000, type: "Membership", mode: "Bank", status: "paid", date: daysAgo(90), note: "Founding member" }],
 });
 
-const people: [string, number, string][] = [
-  ["Riya Sharma", 1, "approved"], ["Arjun Mehta", 1, "approved"],
-  ["Kabir Singh", 2, "approved"], ["Neha Gupta", 2, "approved"], ["Vikram Rao", 2, "pending"],
-  ["Priya Nair", 3, "approved"], ["Rohan Das", 3, "approved"], ["Anjali Verma", 3, "pending"],
-  ["Sameer Khan", 3, "pending"], ["Pooja Iyer", 3, "approved"],
+// same day + month as `inDays` from today, `years` back; null = not set. Relative so the dashboard card always has data.
+const yearsAgo = (inDays: number | null, years: number) => {
+  if (inDays === null) return null;
+  const d = daysAgo(-inDays);
+  d.setUTCFullYear(d.getUTCFullYear() - years);
+  return d;
+};
+
+// name, role, status, birthday in N days, anniversary in N days
+const people: [string, number, string, number | null, number | null][] = [
+  ["Riya Sharma", 1, "approved", 0, 45], ["Arjun Mehta", 1, "approved", 12, null],
+  ["Kabir Singh", 2, "approved", -40, 5], ["Neha Gupta", 2, "approved", 90, null], ["Vikram Rao", 2, "pending", 3, null],
+  ["Priya Nair", 3, "approved", 25, 200], ["Rohan Das", 3, "approved", null, null], ["Anjali Verma", 3, "pending", 150, null],
+  ["Sameer Khan", 3, "pending", null, 10], ["Pooja Iyer", 3, "approved", -100, 28],
 ];
 const codes = ["PRE-0001"];
 const approved = [];
-for (const [i, [name, r, status]] of people.entries()) {
+for (const [i, [name, r, status, bday, anniv]] of people.entries()) {
   const memberCode = nextCode(roles[r].codePrefix, codes);
   codes.push(memberCode);
   const m = await Member.create({
     name, phone: `90000000${String(i + 1).padStart(2, "0")}`, password: "pass123", memberCode, roleId: roles[r]._id, status,
+    dateOfBirth: yearsAgo(bday, 28 + i * 2), anniversaryDate: yearsAgo(anniv, 2 + i),
     payments: [
       { amount: 500, type: "Registration", mode: i % 2 ? "UPI" : "Cash", status: i % 4 === 3 ? "due" : "paid", date: daysAgo(60 - i), note: "Joining fee" },
       ...(status === "approved" ? [{ amount: 1200, type: "Membership", mode: "UPI", status: i % 3 ? "paid" : "due", date: daysAgo(10), note: "Annual membership" }] : []),

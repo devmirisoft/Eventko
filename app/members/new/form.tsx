@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { createMember } from "../../actions";
-import { Icon, PaymentFields } from "../../ui";
+import { Icon, MemberDateFields, PaymentFields } from "../../ui";
 
 type Props = { roles: { id: string; name: string }[]; codes: Record<string, string>; cancel: string };
 
@@ -60,6 +60,7 @@ export default function NewMemberForm({ roles, codes, cancel }: Props) {
               )}
             </span>
           </div>
+          <MemberDateFields />
         </div>
       </section>
 

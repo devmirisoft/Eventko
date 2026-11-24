@@ -10,6 +10,8 @@ export const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 export const total = (pays: Pay[], status: string) => pays.reduce((t, p) => t + (p.status === status ? p.amount : 0), 0);
 // dates are stored as UTC midnight (from <input type="date">), so format in UTC too
 export const fmt = (d: Date | string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+// "12 Mar", no year (birthdays, anniversaries); "—" when not set
+export const dayMonth = (d?: Date | string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }) : "—");
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -139,6 +141,19 @@ export function PaymentFields() {
       </label>
       <label className="field">Date<input name="date" type="date" defaultValue={day(new Date())} className="input" /></label>
       <label className="field">Note<input name="note" placeholder="Optional" className="input" /></label>
+    </>
+  );
+}
+
+// max = today blocks future dates in the picker; the server checks again (plus anniversary >= birth).
+// suppressHydrationWarning: "today" can differ between server and browser around midnight.
+export function MemberDateFields({ m }: { m?: { dateOfBirth?: Date | null; anniversaryDate?: Date | null } }) {
+  const max = day(new Date());
+  const opt = <span className="hint">(optional)</span>;
+  return (
+    <>
+      <label className="field"><span>Date of birth {opt}</span><input name="dateOfBirth" type="date" max={max} defaultValue={m?.dateOfBirth ? day(m.dateOfBirth) : ""} suppressHydrationWarning className="input" /></label>
+      <label className="field"><span>Anniversary date {opt}</span><input name="anniversaryDate" type="date" max={max} defaultValue={m?.anniversaryDate ? day(m.anniversaryDate) : ""} suppressHydrationWarning className="input" /></label>
     </>
   );
 }

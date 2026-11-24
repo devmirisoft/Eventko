@@ -25,6 +25,8 @@ export const Member =
     roleId: { ...ref("Role"), required: true },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     isAdmin: { type: Boolean, default: false },
+    dateOfBirth: Date, // optional, UTC midnight like every other date here
+    anniversaryDate: Date, // optional, marriage anniversary
     payments: [{
       amount: { type: Number, required: true, min: 0 },
       type: { type: String }, // a bare `type: String` would make mongoose treat the whole object as a String
@@ -80,6 +82,30 @@ export const linkCode = (who: string) => who.match(/\(([^()]+)\)\s*$/)?.[1].trim
 export function nextCode(prefix: string, codes: string[]) {
   const nums = codes.filter((c) => c.startsWith(prefix + "-")).map((c) => parseInt(c.slice(prefix.length + 1)) || 0);
   return `${prefix}-${String(Math.max(0, ...nums) + 1).padStart(4, "0")}`;
+}
+
+// Next time d's day + month comes round, on or after `from` (both UTC midnight). 29 Feb falls on 28 Feb in non-leap years.
+export function nextOccurrence(d: Date, from: Date) {
+  const m = d.getUTCMonth(), dd = d.getUTCDate();
+  for (let y = from.getUTCFullYear(); ; y++) {
+    const leap = new Date(Date.UTC(y, 1, 29)).getUTCDate() === 29;
+    const t = new Date(Date.UTC(y, m, m === 1 && dd === 29 && !leap ? 28 : dd));
+    if (t >= from) return t;
+  }
+}
+
+type Dated = { dateOfBirth?: Date | null; anniversaryDate?: Date | null };
+
+// birthdays + anniversaries within `days` of `from`, soonest first. left = 0 means today.
+export function upcoming<T extends Dated>(members: T[], from: Date, days = 30) {
+  return members
+    .flatMap((m) => ([["Birthday", m.dateOfBirth], ["Anniversary", m.anniversaryDate]] as const).flatMap(([type, d]) => {
+      if (!d) return [];
+      const date = nextOccurrence(new Date(d), from);
+      const left = Math.round((+date - +from) / 864e5);
+      return left <= days ? [{ m, type, date, left }] : [];
+    }))
+    .sort((a, b) => a.left - b.left);
 }
 
 // true if putting role `id` under `parentId` would make it its own ancestor

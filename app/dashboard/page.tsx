@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { Event, Meeting, Member } from "@/lib/db";
+import { Event, Meeting, Member, upcoming } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Badge, DateTile, Empty, Stat, fmt, inr, plural, today, total } from "../ui";
 
 export default async function Dashboard() {
   const m = await auth();
-  const [members, upcoming, meetings] = await Promise.all([
+  const [members, events, meetings, approved] = await Promise.all([
     m.isAdmin ? Member.find({}, "name memberCode status payments createdAt").sort("-createdAt").lean() : [m],
     Event.find({ date: { $gte: today() } }, "title date venue").sort("date").lean(),
     Meeting.find({}, "title date destination notes").sort("-date -createdAt").limit(3).lean(),
+    // ponytail: scans every approved member each load; fine for a club, move to an aggregation if it reaches tens of thousands
+    Member.find({ status: "approved" }, "name roleId dateOfBirth anniversaryDate").populate("roleId", "name").lean(),
   ]);
+  const celebrations = upcoming(approved, today());
   const pays = members.flatMap((x) => x.payments);
   const pending = members.filter((x) => x.status === "pending");
   const dueCount = pays.filter((p) => p.status === "due").length;
@@ -22,7 +25,7 @@ export default async function Dashboard() {
           { label: "Pending approvals", value: pending.length, icon: "clock", color: "gold" },
         ] as const
       : []),
-    { label: "Upcoming events", value: upcoming.length, icon: "calendar", color: "ink", sub: upcoming[0] && `Next: ${fmt(upcoming[0].date)}` },
+    { label: "Upcoming events", value: events.length, icon: "calendar", color: "ink", sub: events[0] && `Next: ${fmt(events[0].date)}` },
     { label: `${my}Total paid`, value: inr(total(pays, "paid")), icon: "wallet", color: "ok" },
     { label: `${my}Total due`, value: inr(total(pays, "due")), icon: "receipt", color: "warn", sub: dueCount ? `${plural(dueCount, "payment")} due` : "All settled" },
   ] as const;
@@ -45,9 +48,9 @@ export default async function Dashboard() {
             <h2 className="font-semibold">Upcoming events</h2>
             <Link href="/events" className="link text-sm">View all</Link>
           </div>
-          {upcoming.length ? (
+          {events.length ? (
             <ul>
-              {upcoming.slice(0, 4).map((e) => (
+              {events.slice(0, 4).map((e) => (
                 <li key={String(e._id)}>
                   <Link href={`/events/${e._id}`} className="-mx-2 flex items-center gap-4 rounded-xl p-2 transition-colors hover:bg-white/40">
                     <DateTile d={e.date} />
@@ -112,6 +115,29 @@ export default async function Dashboard() {
             )}
           </section>
         )}
+
+        <section className="card lg:col-span-2">
+          <h2 className="mb-2 font-semibold">Upcoming Birthdays &amp; Anniversaries <span className="text-sm font-normal text-muted">(next 30 days)</span></h2>
+          {celebrations.length ? (
+            <ul className="grid gap-x-6 md:grid-cols-2">
+              {celebrations.map(({ m: x, type, date, left }) => (
+                // today's row: gold tint + "Today" label, so it doesn't rely on colour alone
+                <li key={`${x._id}-${type}`} className={`-mx-2 flex items-center gap-4 rounded-xl p-2 ${left ? "" : "bg-gold/15"}`}>
+                  <DateTile d={date} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{x.name}</p>
+                    <p className="truncate text-sm text-muted">{x.roleId?.name} · {type}</p>
+                  </div>
+                  <span className={`shrink-0 text-sm tabular-nums ${left ? "text-muted" : "font-semibold text-warn-ink"}`}>
+                    {left === 0 ? "Today" : left === 1 ? "Tomorrow" : `${left} days left`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty icon="calendar" title="Nothing in the next 30 days" />
+          )}
+        </section>
 
         <section className="card lg:col-span-2">
           <div className="mb-2 flex items-center justify-between">
