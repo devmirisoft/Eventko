@@ -20,8 +20,8 @@ export default async function Login({ searchParams }: PageProps<"/">) {
 
         <form action={login} className="mt-6 space-y-4">
           <label className="field">
-            Phone number
-            <input name="phone" type="tel" required autoComplete="username" className="input" />
+            Username
+            <input name="phone" type="text" autoCapitalize="none" autoCorrect="off" spellCheck={false} required autoComplete="username" className="input" />
           </label>
           <div className="field">
             <label htmlFor="password">Password</label>
@@ -30,9 +30,7 @@ export default async function Login({ searchParams }: PageProps<"/">) {
           <Btn className="btn mt-2 w-full">Sign in</Btn>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted">
-          New here? <Link href="/members/new" className="link">Create new member</Link>
-        </p>
+      
       </div>
     </div>
   );

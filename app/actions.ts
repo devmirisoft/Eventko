@@ -35,7 +35,7 @@ const payment = (fd: FormData) => ({
 export async function login(fd: FormData) {
   await db();
   const m = await Member.findOne({ phone: s(fd, "phone"), password: s(fd, "password") }).lean();
-  if (!m) fail("/", "Invalid phone or password");
+  if (!m) fail("/", "Invalid username or password");
   if (m.status !== "approved") fail("/", `Your account is ${m.status}`);
   (await cookies()).set("mid", String(m._id), { httpOnly: true, sameSite: "lax", path: "/" });
   ok("/dashboard");
