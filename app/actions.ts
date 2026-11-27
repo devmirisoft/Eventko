@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { db, Member, Role, Event, Meeting, Legacy, linkCode, wouldLoop } from "@/lib/db";
+import { db, Member, Role, Event, Meeting, Legacy, linkCode, nextCode, wouldLoop } from "@/lib/db";
 import { auth, me } from "@/lib/auth";
 
 const s = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -56,27 +56,42 @@ export async function logout() {
 }
 
 // Public (linked from login). Returns an error string so the client form keeps its input.
+// The public Join form sends no member code or payment: the code is generated from the role's prefix.
 export async function createMember(fd: FormData) {
   const viewer = await me();
   try {
+    const roleId = s(fd, "roleId");
+    let memberCode = s(fd, "memberCode");
+    if (!memberCode) {
+      const role = await Role.findById(roleId, "codePrefix").lean().catch(() => null);
+      if (!role) throw "Pick a designation";
+      // ponytail: two sign-ups in the same instant can draw the same code; the unique index rejects the second and they resubmit
+      memberCode = nextCode(role.codePrefix, (await Member.find({}, "memberCode").lean()).map((m) => m.memberCode));
+    }
     await Member.create({
       name: s(fd, "name"),
       phone: s(fd, "phone"),
-      memberCode: s(fd, "memberCode"),
-      roleId: s(fd, "roleId"),
+      memberCode,
+      roleId,
       ...memberDates(fd),
-      payments: [payment(fd)],
+      payments: fd.has("amount") ? [payment(fd)] : [],
     });
   } catch (e) {
     return errMsg(e);
   }
-  ok(viewer?.isAdmin ? "/approvals" : "/members/new?sent=1");
+  ok(viewer?.isAdmin ? "/approvals" : `/members/new?sent=${Date.now()}`);
 }
 
 export async function updateMember(id: string, fd: FormData) {
   await auth(true);
   try {
     const data = { name: s(fd, "name"), phone: s(fd, "phone"), memberCode: s(fd, "memberCode"), roleId: s(fd, "roleId"), status: s(fd, "status"), ...memberDates(fd) };
+    // the picker (PhotoInput) shrinks it to a small JPEG first; an empty file input means "keep the current photo"
+    const photo = fd.get("photo");
+    if (photo instanceof File && photo.size) {
+      if (photo.type !== "image/jpeg" || photo.size > 500_000) throw "Photo must be a JPEG under 500 KB";
+      Object.assign(data, { photo: Buffer.from(await photo.arrayBuffer()), photoAt: new Date() });
+    }
     await Member.updateOne({ _id: id }, data, { runValidators: true });
   } catch (e) {
     fail(`/members/${id}`, e);
@@ -156,7 +171,7 @@ export async function deleteMeeting(id: string) {
   ok("/meetings");
 }
 
-const legacyPath = (type: string) => `/hierarchy?tab=${type === "founder" ? "founders" : "presidents"}`;
+const legacyPath = (type: string) => `/history?tab=${type === "founder" ? "founders" : "presidents"}`;
 
 export async function saveLegacy(type: string, id: string | null, fd: FormData) {
   await auth(true);

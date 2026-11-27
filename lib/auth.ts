@@ -14,7 +14,7 @@ export const me = cache(async () => {
 
 export async function auth(adminOnly = false) {
   const m = await me();
-  if (!m) redirect("/");
+  if (!m) redirect("/?login");
   if (adminOnly && !m.isAdmin) redirect("/dashboard");
   return m;
 }

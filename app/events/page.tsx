@@ -1,57 +1,64 @@
 import Link from "next/link";
-import { Event } from "@/lib/db";
+import { Event, Member } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { deleteEvent, saveEvent } from "../actions";
 import { Btn } from "../client";
-import { DateTile, Empty, EventFields, Icon, Modal, PageHeader, plural, today } from "../ui";
+import { Empty, EventCard, EventFields, Icon, Modal, PageHeader, Tabs, photoUrl, today } from "../ui";
 
-export default async function Events() {
+export default async function Events({ searchParams }: PageProps<"/events">) {
   const m = await auth();
+  const show = String((await searchParams).show ?? "");
   const events = await Event.find().sort("date").lean();
-  const t = today();
-  const upcoming = events.filter((e) => e.date >= t);
-  const past = events.filter((e) => e.date < t).reverse();
+  // faces for the "going" stacks: one query for everyone attending anything
+  const people = await Member.find({ _id: { $in: events.flatMap((e) => e.attendees) }, status: "approved" }, "name photoAt").lean();
+  const face = new Map(people.map((p) => [String(p._id), { name: p.name, src: photoUrl(p) }]));
 
-  const list = (title: string, items: typeof events, isPast = false) => (
-    <section className="mb-10">
-      <h2 className="mb-4 font-semibold">{title} <span className="font-normal text-muted">({items.length})</span></h2>
-      {items.length ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((e) => (
-            <article key={String(e._id)} className="card flex gap-4 p-4 transition duration-200 hover:-translate-y-0.5">
-              <DateTile d={e.date} muted={isPast} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <h3 className="truncate font-semibold"><Link href={`/events/${e._id}`} className="hover:text-accent">{e.title}</Link></h3>
-                {e.venue && <p className="flex items-center gap-1 truncate text-xs text-muted"><Icon n="pin" className="size-3.5 shrink-0" />{e.venue}</p>}
-                {e.description && <p className="mt-2 line-clamp-2 text-sm text-muted">{e.description}</p>}
-                <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                  <span className="flex items-center gap-1.5 text-xs text-muted"><Icon n="users" className="size-4" />{plural(e.attendees.length, "attendee")}</span>
-                  <div className="flex gap-2">
-                    <Link href={`/events/${e._id}`} className="btn btn-ghost btn-sm">{m.isAdmin ? "Edit" : "View"}</Link>
-                    {m.isAdmin && (
-                      <form action={deleteEvent.bind(null, String(e._id))}>
-                        <Btn ask={`Delete "${e.title}"?`} aria-label={`Delete ${e.title}`} title="Delete" className="icon-btn size-9 hover:text-bad-ink"><Icon n="trash" className="size-4" /></Btn>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="card"><Empty icon="calendar" title={isPast ? "No past events" : "No upcoming events"} /></div>
-      )}
-    </section>
-  );
+  // dates are UTC midnight and events have no end date, so "ongoing" means today's
+  const t = +today();
+  const status = (d: Date) => (+d > t ? "upcoming" : +d === t ? "ongoing" : "completed");
+  const live = events.filter((e) => +e.date >= t);
+  const past = events.filter((e) => +e.date < t).reverse(); // newest first
+  const tabs = [
+    ["", "All", [...live, ...past]],
+    ["upcoming", "Upcoming", live.filter((e) => +e.date > t)],
+    ["ongoing", "Ongoing", live.filter((e) => +e.date === t)],
+    ["completed", "Completed", past],
+  ] as const;
+  const [cur, label, shown] = tabs.find(([k]) => k === show) ?? tabs[0];
 
   return (
     <>
-      <PageHeader title="Events" sub={`${upcoming.length} upcoming · ${past.length} past`}>
-        {m.isAdmin && <button popoverTarget="new-event" className="btn"><Icon n="plus" className="size-4" />New event</button>}
+      <PageHeader title="Events" sub="Discover what's on and who's going.">
+        {m.isAdmin && <button popoverTarget="new-event" className="btn"><Icon n="plus" className="size-4" />Create event</button>}
       </PageHeader>
-      {list("Upcoming events", upcoming)}
-      {list("Past events", past, true)}
+
+      <div className="mb-5">
+        <Tabs label="Filter events" items={tabs.map(([k, text, list]) => [k ? `/events?show=${k}` : "/events", `${text} (${list.length})`, k === cur])} />
+      </div>
+
+      {shown.length ? (
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {shown.map((e) => {
+            const id = String(e._id);
+            return (
+              <li key={id}>
+                <EventCard e={e} status={status(e.date)} people={e.attendees.flatMap((a: unknown) => face.get(String(a)) ?? [])}>
+                  {m.isAdmin && (
+                    <>
+                      <Link href={`/events/${id}`} aria-label={`Edit ${e.title}`} title="Edit" className="icon-btn size-9"><Icon n="pencil" className="size-4" /></Link>
+                      <form action={deleteEvent.bind(null, id)}>
+                        <Btn ask={`Delete "${e.title}"?`} aria-label={`Delete ${e.title}`} title="Delete" className="icon-btn size-9 hover:bg-bad/8 hover:text-bad-ink"><Icon n="trash" className="size-4" /></Btn>
+                      </form>
+                    </>
+                  )}
+                </EventCard>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="card"><Empty icon="calendar" title={cur ? `No ${label.toLowerCase()} events` : "No events yet"} /></div>
+      )}
 
       {m.isAdmin && (
         // a successful create redirects to the event page, so this unmounts on its own

@@ -1,38 +1,46 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-display), ui-serif, Georgia, serif; /* promotional headlines only (landing) */
 }
 
-/* Warm ivory + deep emerald. Emerald clears WCAG AA both as text on ivory (5.5:1) and under white text (6.3:1).
-   muted is #65736B nudged darker so small text clears AA (4.7:1 vs 4.4:1); the spec value is kept as faint for icons
-   and placeholders. Gold is decorative only (too light for text). *-ink are the AA-safe text shades of status colours. */
+/* Design tokens: the one place colours, radii and shadows live. Pages use them through Tailwind utilities
+   (bg-accent, text-muted, rounded-card ...) and the component classes below, never raw hex.
+   muted is #6f6a78, a step darker than the brief's #777280, which is 4.3:1 on the page background (AA needs 4.5).
+   faint is for icons and placeholders only. Gold is decorative only (too light for text); gold-ink is its text shade. *-ink are the text shades
+   of the status colours. tint = the light purple behind hovers, active tabs and icon chips. */
 @theme {
-  --color-surface: #f1f0ea;
-  --color-sage: #e1e5da;
-  --color-ink: #25372f;
-  --color-muted: #616e66;
-  --color-faint: #65736b;
-  --color-line: #dddbd1;
-  --color-accent: #256b58;
-  --color-gold: #c49357;
-  --color-ok: #3e9b6e;
-  --color-ok-ink: #1f6646;
-  --color-warn: #d98c3a;
-  --color-warn-ink: #7a4e0c;
-  --color-bad: #cf6a62;
-  --color-bad-ink: #a3343d;
-  --shadow-raised: 8px 8px 18px #d2d0c6;
-  --shadow-soft: 4px 4px 9px #d2d0c6;
-  --shadow-inset: inset 5px 5px 10px #d2d0c6;
-  --shadow-pressed: inset 3px 3px 6px #d2d0c6;
-  --shadow-modal: 0 24px 60px -12px rgb(37 55 47 / 0.3);
+  --color-surface: #f7f6fa;
+  --color-tint: #f3edf8;
+  --color-ink: #1d1926;
+  --color-muted: #6f6a78;
+  --color-faint: #8f899a;
+  --color-line: #e8e4ef;
+  --color-line-strong: #d8d0e4;
+  --color-accent: #713b96;
+  --color-accent-hover: #5b2b7d;
+  --color-secondary: #a78bfa;
+  --color-gold: #d4a76a;
+  --color-gold-ink: #8a6430;
+  --color-plum: #1c1729;
+  --color-ok: #16a34a;
+  --color-ok-ink: #166534;
+  --color-warn: #d97706;
+  --color-warn-ink: #92400e;
+  --color-bad: #dc2626;
+  --color-bad-ink: #b91c1c;
+  --radius-card: 16px;
+  --radius-ctl: 10px;
+  --shadow-card: 0 1px 2px rgb(29 25 38 / 0.04);
+  --shadow-hover: 0 10px 28px -14px rgb(29 25 38 / 0.22);
+  --shadow-pop: 0 18px 44px -12px rgb(29 25 38 / 0.28);
 }
 
 @layer base {
-  html { color-scheme: light; }
+  html { color-scheme: light; -webkit-tap-highlight-color: transparent; }
   body { background: var(--color-surface); }
-  h1 { @apply text-xl font-semibold tracking-tight text-ink sm:text-2xl; }
+  h1 { @apply text-xl font-bold tracking-tight text-ink sm:text-2xl; }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   summary { cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
@@ -40,21 +48,23 @@
 
 @layer components {
   /* surfaces */
-  .card { @apply rounded-[20px] bg-surface p-5 shadow-raised; }
-  .well { @apply rounded-2xl bg-surface shadow-inset; }
-  .chip { @apply grid size-11 shrink-0 place-items-center rounded-full bg-surface shadow-inset; }
-  .avatar { @apply grid size-10 shrink-0 place-items-center rounded-full bg-surface text-sm font-semibold text-accent shadow-soft; }
+  .card { @apply rounded-card border border-line bg-white p-5 shadow-card; }
+  .lift { @apply transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-hover; }
+  .well { @apply rounded-ctl bg-surface; }
+  .chip { @apply grid size-10 shrink-0 place-items-center rounded-full bg-tint text-accent; }
+  .avatar { @apply grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-tint text-sm font-semibold text-accent; }
+  .eyebrow { @apply text-xs font-semibold tracking-wide text-muted uppercase; }
 
   /* forms */
   .field { @apply flex flex-col gap-1.5 text-sm font-medium text-ink; }
   .hint { @apply text-xs font-normal text-muted; }
-  .input { @apply h-11 w-full min-w-0 rounded-xl bg-surface px-3.5 text-sm font-normal text-ink shadow-inset outline-2 outline-offset-0 outline-transparent transition-[outline-color] duration-150 placeholder:text-faint focus:outline-accent disabled:text-muted; }
-  .input:user-invalid { @apply outline-bad; }
+  .input { @apply h-11 w-full min-w-0 rounded-ctl border border-line bg-white px-3.5 text-sm font-normal text-ink transition duration-150 placeholder:text-faint hover:border-line-strong focus:border-accent focus:ring-3 focus:ring-accent/15 focus:outline-hidden disabled:bg-surface disabled:text-muted; }
+  .input:user-invalid { @apply border-bad ring-bad/15; }
   textarea.input { @apply h-auto py-3; }
   select.input {
     @apply cursor-pointer appearance-none pr-10;
-    background: no-repeat right 0.875rem center / 1rem
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365736b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background: #fff no-repeat right 0.875rem center / 1rem
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6a78' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 
   /* Themed dropdown list where customizable <select> is supported (Chromium 135+). Other browsers keep the native list. */
@@ -64,65 +74,97 @@
     select.input::picker-icon {
       content: ""; width: 1rem; height: 1rem; transition: rotate 0.2s;
       background: center / contain no-repeat
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365736b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6a78' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     }
     select.input:open::picker-icon { rotate: 180deg; }
     select.input::picker(select) {
-      @apply my-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-modal;
+      @apply my-1.5 rounded-ctl border border-line bg-white p-1.5 shadow-pop;
       opacity: 0; translate: 0 -4px;
       transition: opacity 0.15s, translate 0.15s, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
     }
     select.input:open::picker(select) { opacity: 1; translate: 0; }
     @starting-style { select.input:open::picker(select) { opacity: 0; translate: 0 -4px; } }
-    select.input option { @apply flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm text-ink transition-colors duration-100; }
-    select.input option:is(:hover, :focus-visible) { @apply bg-sage outline-none; }
+    select.input option { @apply flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-sm text-ink transition-colors duration-100; }
+    select.input option:is(:hover, :focus-visible) { @apply bg-tint outline-none; }
     select.input option:checked { @apply font-semibold text-accent; }
     select.input option::checkmark { order: 1; margin-left: auto; color: var(--color-accent); }
   }
 
   /* buttons. modifiers: "btn btn-ghost", "btn btn-sm" ... */
-  .btn { @apply inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold whitespace-nowrap text-white shadow-soft transition duration-150 select-none hover:bg-[#1d5646] active:translate-y-px active:shadow-[inset_3px_3px_6px_rgb(0_0_0/0.25)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none aria-busy:cursor-wait; }
-  .btn-ghost, .btn-red, .btn-green { @apply bg-surface hover:bg-surface active:shadow-pressed; }
-  .btn-ghost { @apply text-ink hover:text-accent; }
-  .btn-red { @apply text-bad-ink; }
-  .btn-green { @apply text-ok-ink; }
-  .btn-sm { @apply h-9 gap-1.5 rounded-[10px] px-3.5 text-xs; }
-  .icon-btn { @apply inline-grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl bg-surface text-muted shadow-soft transition duration-150 hover:text-accent active:shadow-pressed disabled:cursor-not-allowed disabled:opacity-50; }
-  .link { @apply cursor-pointer font-medium text-accent underline-offset-2 hover:underline; }
+  .btn { @apply inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-ctl bg-accent px-4.5 text-sm font-semibold whitespace-nowrap text-white transition duration-150 select-none hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-wait; }
+  .btn-ghost { @apply border border-line bg-white text-ink hover:border-line-strong hover:bg-surface; }
+  .btn-soft { @apply bg-tint text-accent hover:bg-[#ebdff3]; }
+  .btn-green { @apply bg-ok/10 text-ok-ink hover:bg-ok/15; }
+  .btn-red { @apply bg-bad/8 text-bad-ink hover:bg-bad/12; }
+  .btn-danger { @apply bg-bad hover:bg-bad-ink; }
+  .btn-sm { @apply h-9 gap-1.5 px-3 text-xs; }
+  .icon-btn { @apply inline-grid size-10 shrink-0 cursor-pointer place-items-center rounded-ctl text-muted transition duration-150 hover:bg-tint hover:text-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-50; }
+  .link { @apply cursor-pointer font-semibold text-accent underline-offset-2 hover:underline; }
 
   /* messages */
-  .err { @apply flex items-start gap-2 rounded-xl bg-bad/12 px-4 py-3 text-sm font-medium text-bad-ink; }
+  .err { @apply flex items-start gap-2 rounded-ctl border border-bad/20 bg-bad/6 px-4 py-3 text-sm font-medium text-bad-ink; }
 
-  /* tables (desktop only; phones get card lists) */
+  /* tables (desktop; phones get card lists). Wrap in "card overflow-x-auto p-0". */
   .tbl { @apply w-full text-left text-sm whitespace-nowrap; }
-  .tbl th { @apply px-4 pt-3 pb-3 text-xs font-semibold tracking-wide text-muted uppercase; }
-  .tbl td { @apply border-t border-line px-4 py-3.5; }
-  .tbl tbody tr { @apply transition-colors duration-150 hover:bg-white/40; }
+  .tbl th { @apply border-b border-line bg-surface/70 px-4 py-3 text-xs font-semibold text-muted; }
+  .tbl td { @apply border-b border-line px-4 py-3.5; }
+  .tbl tbody tr:last-child td { @apply border-b-0; }
+  .tbl tbody tr { @apply transition-colors duration-150 hover:bg-surface/60; }
   .num { @apply text-right tabular-nums; }
 
-  /* navigation */
-  .nav-item { @apply flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-muted transition duration-200 hover:text-ink hover:shadow-soft; }
-  .nav-item[aria-current="page"] { @apply bg-sage text-accent shadow-pressed hover:shadow-pressed; }
+  /* sidebar links (dark plum). The label hides on the md-lg icon rail. */
+  .side-link { @apply relative flex h-11 items-center gap-3 rounded-ctl px-3 text-sm font-medium text-white/65 transition duration-200 hover:bg-white/8 hover:text-white focus-visible:outline-white max-lg:justify-center; }
+  .side-link[aria-current="page"] { @apply bg-white/10 text-white before:absolute before:inset-y-2.5 before:-left-3 before:w-1 before:rounded-r-full before:bg-secondary lg:before:-left-4; }
 
-  /* popover modal: fades + scales in */
+  /* Modals: native popover or <dialog>. Fade + scale in on desktop; slide up as a bottom sheet on phones (below). */
   .modal {
-    @apply m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-[20px] bg-surface p-5 text-ink shadow-modal sm:p-6;
-    transition: opacity 0.2s, scale 0.2s, overlay 0.2s allow-discrete, display 0.2s allow-discrete;
+    @apply m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-card bg-white p-5 text-ink shadow-pop sm:p-6;
+    transition: opacity 0.2s, scale 0.2s, translate 0.25s cubic-bezier(0.2, 0, 0, 1), overlay 0.25s allow-discrete, display 0.25s allow-discrete;
   }
-  .modal:not(:popover-open) { opacity: 0; scale: 0.96; }
-  @starting-style { .modal:popover-open { opacity: 0; scale: 0.96; } }
-  .modal::backdrop { background: rgb(37 55 47 / 0.35); }
+  .modal:not(:popover-open, [open]) { opacity: 0; scale: 0.97; }
+  @starting-style { .modal:is(:popover-open, [open]) { opacity: 0; scale: 0.97; } }
+  .modal::backdrop, .menu::backdrop { background: rgb(28 23 41 / 0.45); transition: opacity 0.2s, overlay 0.25s allow-discrete, display 0.25s allow-discrete; }
+  @starting-style { .modal:is(:popover-open, [open])::backdrop { opacity: 0; } }
+
+  /* Dropdown menus (native popover). Anchored under their button where CSS anchor positioning exists (see Menu). */
+  .menu {
+    @apply min-w-56 rounded-card border border-line bg-white p-1.5 text-ink shadow-pop;
+    transition: opacity 0.15s, translate 0.2s cubic-bezier(0.2, 0, 0, 1), overlay 0.2s allow-discrete, display 0.2s allow-discrete;
+  }
+  .menu:not(:popover-open) { opacity: 0; translate: 0 -4px; }
+  @starting-style { .menu:popover-open { opacity: 0; translate: 0 -4px; } }
+  .menu-item { @apply flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-[8px] px-3 text-left text-sm font-medium text-ink transition-colors hover:bg-tint hover:text-accent; }
+  .menu-sep { @apply mx-2 my-1.5 border-t border-line; }
+
+  @media (width >= 48rem) {
+    .menu::backdrop { background: transparent; }
+    @supports (anchor-name: --a) {
+      .menu { inset: auto; margin: 6px 0 0; position-area: block-end span-inline-start; position-try-fallbacks: flip-block; }
+    }
+  }
+
+  /* phones: modals and menus become bottom sheets */
+  @media (width < 48rem) {
+    .modal, .menu {
+      inset: auto 0 0 0; margin: 0; width: 100%; max-width: none; max-height: 88dvh; border: 0; border-radius: 20px 20px 0 0;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+    .modal:not(:popover-open, [open]), .menu:not(:popover-open) { opacity: 1; scale: 1; translate: 0 100%; }
+    @starting-style { .modal:is(:popover-open, [open]), .menu:popover-open { opacity: 1; scale: 1; translate: 0 100%; } }
+    .menu { @apply px-3 pt-3; }
+    .menu-item { @apply min-h-12 text-base; }
+  }
 }
 
 /* Role tree from nested <ul>/<li>; connector lines are borders on pseudo-elements.
    Below lg: indented tree. lg+: top-down org chart. A checked .toggle checkbox collapses that role's branch.
    Inside a layer: Next's CSS step dropped these rules when they were un-layered. */
 @layer components {
-  .org { --line: 1.5px solid #c9ccc0; --gap: 2rem; }
-  /* emerald cap on each node, fading with depth, so parents read stronger than their children */
-  .org .role { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--color-accent) var(--cap, 100%), transparent), var(--shadow-raised); }
-  .org ul ul .role { --cap: 60%; }
-  .org ul ul ul .role { --cap: 30%; }
+  .org { --line: 1.5px solid var(--color-line-strong); --gap: 2rem; }
+  /* purple cap on each node, fading with depth, so parents read stronger than their children */
+  .org .role { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--color-accent) var(--cap, 100%), transparent), var(--shadow-card); }
+  .org ul ul .role { --cap: 55%; }
+  .org ul ul ul .role { --cap: 25%; }
   .org li:has(> .role .toggle :checked) > ul { display: none; }
   .org ul ul { transition: opacity 0.22s ease, translate 0.22s ease; }
   @starting-style { .org ul ul { opacity: 0; translate: 0 -6px; } }
@@ -131,8 +173,8 @@
   .toggle:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
   @media (width < 64rem) {
-    /* elbow = li padding-top + node padding + half the prefix chip, so lines hit the chip's centre */
-    .org { --elbow: 3rem; }
+    /* elbow = li padding-top + node padding + half the node's min-h-14 first row, so lines hit its centre */
+    .org { --elbow: 3.5rem; }
     .org ul ul { padding-left: 1.5rem; }
     .org li { position: relative; padding-top: 0.75rem; }
     .org ul ul > li::before { content: ""; position: absolute; left: -0.875rem; top: 0; bottom: 0; border-left: var(--line); }
@@ -158,6 +200,10 @@
     .org .role { width: 15rem; }
   }
 }
+
+/* page transition: each page's top-level blocks rise in when it mounts (search-param changes keep the DOM, so no replay) */
+@keyframes enter { from { opacity: 0; translate: 0 6px; } }
+.page-in > * { animation: enter 0.25s cubic-bezier(0.2, 0, 0, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

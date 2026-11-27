@@ -1,115 +1,101 @@
 import Link from "next/link";
 import { Member, searchRe } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { Badge, Empty, Icon, PageHeader, dayMonth, inr, initials, plural, total } from "../ui";
+import { Avatar, Badge, Empty, FilterBar, Icon, MemberCard, Menu, PageHeader, SearchBar, Tabs, cap, inr, photoUrl, plural, total, withQuery } from "../ui";
 
+const statuses = ["approved", "pending", "rejected"];
+
+// Community directory (admin). Grid of cards by default; ?view=list is the denser management list.
 export default async function Members({ searchParams }: PageProps<"/members">) {
   await auth(true);
   const sp = await searchParams;
   const q = String(sp.q ?? "");
-  const status = String(sp.status ?? "");
+  const status = statuses.includes(String(sp.status)) ? String(sp.status) : "";
+  const view = sp.view === "list" ? "list" : "grid";
 
-  const filter: Record<string, unknown> = status ? { status } : {};
-  if (q) {
-    const re = searchRe(q);
-    filter.$or = [{ name: re }, { phone: re }, { memberCode: re }];
-  }
-  const members = await Member.find(filter).populate("roleId", "name").sort("-createdAt").lean();
-  const filtered = Boolean(q || status);
+  const re = q && searchRe(q);
+  const [all, requests] = await Promise.all([
+    Member.find(re ? { $or: [{ name: re }, { phone: re }, { memberCode: re }] } : {}).populate("roleId", "name").sort("-createdAt").lean(),
+    Member.countDocuments({ status: "pending" }),
+  ]);
+  // tab counts come from the same searched list as the rows, so they always agree
+  const members = status ? all.filter((m) => m.status === status) : all;
+  const href = (s: string, query = q, v: string = view) => withQuery("/members", { q: query, status: s, view: v === "list" ? v : "" });
+  const tabs = ["", ...statuses].map((s): [string, string, boolean] => [
+    href(s),
+    `${s ? cap(s) : "All"} (${s ? all.filter((m) => m.status === s).length : all.length})`,
+    s === status,
+  ]);
 
-  const actions = (id: string, name: string, size = "") => (
-    <>
-      <Link href={`/members/${id}`} aria-label={`Edit ${name}`} title="Edit" className={`icon-btn ${size}`}><Icon n="pencil" className="size-4" /></Link>
-      <Link href={`/members/${id}/payments`} aria-label={`Payments for ${name}`} title="Payments" className={`icon-btn ${size}`}><Icon n="wallet" className="size-4" /></Link>
-    </>
-  );
+  const actions = (m: (typeof all)[number]) => {
+    const id = String(m._id);
+    return (
+      <Menu id={`m-${id}`} label={`Actions for ${m.name}`}>
+        <Link href={`/members/${id}`} className="menu-item"><Icon n="user" className="size-4" />Profile &amp; edit</Link>
+        <Link href={`/members/${id}/payments`} className="menu-item"><Icon n="wallet" className="size-4" />Payments</Link>
+        <a href={`tel:${m.phone}`} className="menu-item"><Icon n="phone" className="size-4" />Call {m.phone}</a>
+      </Menu>
+    );
+  };
 
   return (
     <>
-      <PageHeader title="Members" sub={`${plural(members.length, "member")}${filtered ? " found" : ""}`}>
+      <PageHeader title="Members" sub={`${plural(all.length, "member")}${q ? " found" : " in the community"}`}>
+        <Link href="/approvals" className="btn btn-ghost">
+          <Icon n="userCheck" className="size-4" />Requests
+          {requests > 0 && <span className="rounded-full bg-gold/20 px-1.5 text-xs font-bold text-gold-ink">{requests}</span>}
+        </Link>
         <Link href="/members/new" className="btn"><Icon n="userPlus" className="size-4" />Add member</Link>
       </PageHeader>
 
-      {/* recessed toolbar; the controls inside drop their own inset so it reads as one surface */}
-      <form role="search" className="well mb-6 flex flex-wrap items-center gap-2 p-2 [&_.input]:shadow-none">
-        <div className="relative min-w-0 basis-full sm:flex-1 sm:basis-auto">
-          <Icon n="search" className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-faint" />
-          <input name="q" defaultValue={q} placeholder="Search name, phone or code" aria-label="Search members" className="input bg-transparent pl-10" />
+      <FilterBar>
+        <Tabs label="Filter by status" items={tabs} />
+        <div className="flex gap-2">
+          <SearchBar q={q} label="Search members" placeholder="Search name, phone or code" keep={{ status, view: view === "list" ? view : "" }} clear={href(status, "")} />
+          <div role="group" aria-label="Layout" className="flex shrink-0 gap-1 rounded-ctl border border-line bg-white p-1">
+            {(["grid", "list"] as const).map((v) => (
+              <Link key={v} href={href(status, q, v)} aria-current={view === v ? "true" : undefined} aria-label={`${cap(v)} view`} title={`${cap(v)} view`} className="grid size-9 place-items-center rounded-[8px] text-muted transition-colors hover:text-ink aria-[current=true]:bg-tint aria-[current=true]:text-accent">
+                <Icon n={v} className="size-4" />
+              </Link>
+            ))}
+          </div>
         </div>
-        <select name="status" defaultValue={status} aria-label="Status" className="input w-auto flex-1 bg-transparent sm:w-44 sm:flex-none">
-          <option value="">All statuses</option>
-          {["approved", "pending", "rejected"].map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
-        </select>
-        <button className="btn">Search</button>
-        {filtered && <Link href="/members" className="btn btn-ghost">Clear</Link>}
-      </form>
+      </FilterBar>
 
       {!members.length ? (
         <div className="card">
-          <Empty icon="users" title="No members found">{filtered ? "Try a different search or status." : "Members you add will appear here."}</Empty>
+          <Empty icon="users" title="No members found">{q || status ? "Try a different search or tab." : "Members you add will appear here."}</Empty>
         </div>
+      ) : view === "grid" ? (
+        <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+          {members.map((m) => <li key={String(m._id)}><MemberCard m={m} role={m.roleId?.name} actions={actions(m)} /></li>)}
+        </ul>
       ) : (
-        <>
-          <div className="card hidden overflow-x-auto px-2 py-1 lg:block">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Name</th><th>Designation</th><th>Code</th><th>Phone</th><th>Birthday</th><th>Anniversary</th><th>Status</th>
-                  <th className="num">Paid</th><th className="num">Due</th><th><span className="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((m) => {
-                  const due = total(m.payments, "due");
-                  return (
-                    <tr key={String(m._id)}>
-                      <td className="font-medium">{m.name}</td>
-                      <td className="text-muted">{m.roleId?.name}</td>
-                      <td className="font-mono text-xs">{m.memberCode}</td>
-                      <td className="text-muted tabular-nums">{m.phone}</td>
-                      <td className="text-muted">{dayMonth(m.dateOfBirth)}</td>
-                      <td className="text-muted">{dayMonth(m.anniversaryDate)}</td>
-                      <td><Badge s={m.status} /></td>
-                      <td className="num">{inr(total(m.payments, "paid"))}</td>
-                      <td className={`num ${due ? "font-medium text-warn-ink" : "text-muted"}`}>{inr(due)}</td>
-                      <td><div className="flex justify-end gap-2">{actions(String(m._id), m.name, "size-9")}</div></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-            {members.map((m) => {
-              const due = total(m.payments, "due");
-              return (
-                <article key={String(m._id)} className="card p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="avatar">{initials(m.name)}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{m.name}</p>
-                      <p className="truncate text-xs text-muted">{m.roleId?.name} · <span className="font-mono">{m.memberCode}</span></p>
-                    </div>
-                    <Badge s={m.status} />
-                  </div>
-                  <dl className="well mt-4 grid grid-cols-2 gap-2 rounded-xl px-4 py-3 text-sm">
-                    <div><dt className="text-xs text-muted">Paid</dt><dd className="font-semibold tabular-nums">{inr(total(m.payments, "paid"))}</dd></div>
-                    <div><dt className="text-xs text-muted">Due</dt><dd className={`font-semibold tabular-nums ${due ? "text-warn-ink" : ""}`}>{inr(due)}</dd></div>
-                    <div><dt className="text-xs text-muted">Birthday</dt><dd className="font-medium">{dayMonth(m.dateOfBirth)}</dd></div>
-                    <div><dt className="text-xs text-muted">Anniversary</dt><dd className="font-medium">{dayMonth(m.anniversaryDate)}</dd></div>
-                  </dl>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <a href={`tel:${m.phone}`} className="flex min-w-0 items-center gap-1.5 text-sm text-muted hover:text-ink">
-                      <Icon n="phone" className="size-4 shrink-0" /><span className="truncate tabular-nums">{m.phone}</span>
-                    </a>
-                    <div className="flex gap-2">{actions(String(m._id), m.name)}</div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </>
+        <ul className="card divide-y divide-line p-0">
+          {members.map((m) => {
+            const id = String(m._id);
+            const due = total(m.payments, "due");
+            return (
+              <li key={id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60 sm:px-5">
+                <Avatar name={m.name} src={photoUrl(m)} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold"><Link href={`/members/${id}`} className="hover:text-accent">{m.name}</Link></p>
+                  <p className="truncate text-sm text-muted">
+                    {m.roleId?.name} · <span className="font-mono text-xs">{m.memberCode}</span>
+                    {due > 0 && <span className="font-medium text-warn-ink md:hidden"> · {inr(due)} due</span>}
+                  </p>
+                </div>
+                <a href={`tel:${m.phone}`} className="hidden w-32 shrink-0 text-sm text-muted tabular-nums hover:text-ink lg:block">{m.phone}</a>
+                <div className="hidden w-32 shrink-0 text-right text-sm tabular-nums md:block">
+                  <p>{inr(total(m.payments, "paid"))} <span className="text-xs text-muted">paid</span></p>
+                  <p className={due ? "font-medium text-warn-ink" : "text-muted"}>{inr(due)} <span className="text-xs font-normal text-muted">due</span></p>
+                </div>
+                <Badge s={m.status} />
+                {actions(m)}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

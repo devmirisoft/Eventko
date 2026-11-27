@@ -3,7 +3,7 @@ import { Member } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { addPayment, markPaid } from "../../../actions";
 import { Btn } from "../../../client";
-import { Back, Badge, Empty, Icon, Modal, PageHeader, PaymentFields, Stat, fmt, inr, plural, total } from "../../../ui";
+import { Avatar, Back, Badge, Empty, Icon, Modal, PageHeader, PaymentFields, Stat, fmt, inr, photoUrl, plural, total } from "../../../ui";
 
 export default async function Payments({ params }: PageProps<"/members/[id]/payments">) {
   const viewer = await auth();
@@ -13,6 +13,7 @@ export default async function Payments({ params }: PageProps<"/members/[id]/paym
   if (!m) notFound();
   const pays = [...m.payments].sort((a, b) => +new Date(b.date) - +new Date(a.date));
   const dueCount = pays.filter((p) => p.status === "due").length;
+  const mine = String(viewer._id) === id;
 
   const markBtn = (pid: string, cls = "") => (
     <form action={markPaid.bind(null, id, pid)} className={cls}>
@@ -22,12 +23,15 @@ export default async function Payments({ params }: PageProps<"/members/[id]/paym
 
   return (
     <>
-      {viewer.isAdmin && <Back href="/members">Members</Back>}
-      <PageHeader title={m.name} sub={<span className="font-mono">{m.memberCode}</span>}>
+      {viewer.isAdmin && <Back href={`/members/${id}`}>{m.name}</Back>}
+      <PageHeader
+        title={<span className="flex items-center gap-3"><Avatar name={m.name} src={photoUrl(m)} className="size-11" />{mine ? "My payments" : `${m.name}'s payments`}</span>}
+        sub={<>Member code <span className="font-mono">{m.memberCode}</span></>}
+      >
         {viewer.isAdmin && <button popoverTarget="add-payment" className="btn"><Icon n="plus" className="size-4" />Add payment</button>}
       </PageHeader>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:gap-5 lg:max-w-2xl">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-2xl">
         <Stat label="Total paid" value={inr(total(m.payments, "paid"))} icon="wallet" color="ok" sub={plural(pays.length - dueCount, "payment")} />
         <Stat label="Total due" value={inr(total(m.payments, "due"))} icon="receipt" color="warn" sub={dueCount ? `${dueCount} outstanding` : "All settled"} />
       </div>
@@ -37,7 +41,7 @@ export default async function Payments({ params }: PageProps<"/members/[id]/paym
         <div className="card"><Empty icon="receipt" title="No payments yet" /></div>
       ) : (
         <>
-          <div className="card hidden overflow-x-auto px-2 py-1 md:block">
+          <div className="card hidden overflow-x-auto p-0 md:block">
             <table className="tbl">
               <thead>
                 <tr>

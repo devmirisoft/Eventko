@@ -3,9 +3,46 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { createMember } from "../../actions";
-import { Icon, MemberDateFields, PaymentFields } from "../../ui";
+import { Alert, AuthHead, MemberDateFields, PaymentFields, PhoneInput } from "../../ui";
 
-type Props = { roles: { id: string; name: string }[]; codes: Record<string, string>; cancel: string };
+type Roles = { id: string; name: string }[];
+type Props = { roles: Roles; codes: Record<string, string>; cancel: string };
+
+const req = <span aria-hidden className="text-bad-ink">*</span>;
+
+// Public sign-up (logged out). The server picks the member code; an admin approves before they can log in.
+export function JoinForm({ roles }: { roles: Roles }) {
+  const [error, setError] = useState("");
+  const [pending, start] = useTransition();
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        start(async () => setError((await createMember(fd)) ?? ""));
+      }}
+    >
+      <AuthHead title="Join the organization" sub="Be part of our events, initiatives and community." />
+      <Alert className="">{error}</Alert>
+      <label className="field"><span>Full name {req}</span><input name="name" required autoComplete="name" placeholder="Your full name" className="input" /></label>
+      <div className="field">
+        <label htmlFor="join-phone">Phone number {req}</label>
+        <PhoneInput id="join-phone" name="phone" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} title="10-digit mobile number" placeholder="9876543210" required autoComplete="tel-national" />
+      </div>
+      <label className="field">
+        <span>Designation (applying for) {req}</span>
+        <select name="roleId" required defaultValue="" className="input">
+          <option value="" disabled>Select designation</option>
+          {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+      </label>
+      <p className="well px-4 py-3 text-sm text-muted">An admin reviews every application. You can log in once it&apos;s approved.</p>
+      <button disabled={pending} aria-busy={pending} className="btn w-full">{pending ? "Submitting…" : "Submit application"}</button>
+      <p className="border-t border-line pt-5 text-center text-sm text-muted">Already a member? <Link href="/?login" className="link">Log in</Link></p>
+    </form>
+  );
+}
 
 // Client only for the code auto-fill. Submits via onSubmit (not <form action>) so React
 // doesn't reset the fields when the server returns an error.
@@ -27,7 +64,7 @@ export default function NewMemberForm({ roles, codes, cancel }: Props) {
         start(async () => setError((await createMember(fd)) ?? ""));
       }}
     >
-      {error && <p role="alert" className="err"><Icon n="alert" className="size-5 shrink-0" />{error}</p>}
+      <Alert className="">{error}</Alert>
 
       <section>
         <h2 className="font-semibold">Personal information</h2>

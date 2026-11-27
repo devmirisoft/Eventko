@@ -12,14 +12,12 @@ await Member.init(); // make sure the unique indexes exist
 const midnight = new Date(new Date().toISOString().slice(0, 10));
 const daysAgo = (n: number) => new Date(+midnight - n * 864e5);
 
-// President -> Secretary -> Manager -> Member
-const roles = [];
-let parentId: unknown = null;
-for (const [name, codePrefix] of [["President", "PRE"], ["Secretary", "SEC"], ["Manager", "MGR"], ["Member", "MEM"]]) {
-  const r = await Role.create({ name, codePrefix, parentId });
-  roles.push(r);
-  parentId = r._id;
-}
+// [name, code prefix, index of parent role]. President stays the root: the Past presidents tab treats the top role as the current President.
+const roles: { _id: unknown; codePrefix: string }[] = [];
+for (const [name, codePrefix, p] of [
+  ["President", "PRE", -1], ["Vice President", "VP", 0], ["Secretary", "SEC", 0], ["Joint Secretary", "JS", 2],
+  ["Treasurer", "TRE", 0], ["Directors", "DIR", 0], ["Mentor", "MEN", 0], ["LGB Members", "LGB", 0], ["GB Members", "GB", 7],
+] as const) roles.push(await Role.create({ name, codePrefix, parentId: roles[p]?._id ?? null }));
 
 const admin = await Member.create({
   name: "Admin", phone: ADMIN, password: PASSWORD, memberCode: "PRE-0001",
@@ -37,10 +35,10 @@ const yearsAgo = (inDays: number | null, years: number) => {
 
 // name, role, status, birthday in N days, anniversary in N days
 const people: [string, number, string, number | null, number | null][] = [
-  ["Riya Sharma", 1, "approved", 0, 45], ["Arjun Mehta", 1, "approved", 12, null],
-  ["Kabir Singh", 2, "approved", -40, 5], ["Neha Gupta", 2, "approved", 90, null], ["Vikram Rao", 2, "pending", 3, null],
-  ["Priya Nair", 3, "approved", 25, 200], ["Rohan Das", 3, "approved", null, null], ["Anjali Verma", 3, "pending", 150, null],
-  ["Sameer Khan", 3, "pending", null, 10], ["Pooja Iyer", 3, "approved", -100, 28],
+  ["Riya Sharma", 1, "approved", 0, 45], ["Arjun Mehta", 2, "approved", 12, null],
+  ["Kabir Singh", 4, "approved", -40, 5], ["Neha Gupta", 5, "approved", 90, null], ["Vikram Rao", 3, "pending", 3, null],
+  ["Priya Nair", 7, "approved", 25, 200], ["Rohan Das", 8, "approved", null, null], ["Anjali Verma", 8, "pending", 150, null],
+  ["Sameer Khan", 8, "pending", null, 10], ["Pooja Iyer", 6, "approved", -100, 28],
 ];
 const codes = ["PRE-0001"];
 const approved = [];

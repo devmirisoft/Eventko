@@ -27,6 +27,9 @@ export const Member =
     isAdmin: { type: Boolean, default: false },
     dateOfBirth: Date, // optional, UTC midnight like every other date here
     anniversaryDate: Date, // optional, marriage anniversary
+    // 320px JPEG, served by /members/[id]/photo. select:false so normal queries (incl. every auth check) skip the bytes.
+    photo: { type: Buffer, select: false },
+    photoAt: Date, // set with the photo: "has a photo" flag + cache-busting version in the photo URL
     payments: [{
       amount: { type: Number, required: true, min: 0 },
       type: { type: String }, // a bare `type: String` would make mongoose treat the whole object as a String
